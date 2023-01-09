@@ -6,6 +6,8 @@ import string
 import pickle
 import os
 import re
+import tkinter as tk
+from tkinter import filedialog
 from nltk.classify import NaiveBayesClassifier
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
@@ -22,6 +24,8 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.preprocessing import StandardScaler
+from keras.models import Sequential
+from keras.layers import Embedding, LSTM, Dense
 
 ### One classifier with 16 classes => 43.93% accuracy train and 10.42% accuracy test
 ### => 4 classifiers: I-E || N-S || T-F || J-P
@@ -37,6 +41,7 @@ class Dataset:
         self.dataset = pd.read_csv(dataset_file)
         self.model = Model()
         self.lemmatizer = WordNetLemmatizer()
+        self.Tfidf = TfidfVectorizer(max_features=1000).fit(self.dataset['posts'])
         
         self.stop_words = set(nltk.corpus.stopwords.words('english'))
         self.url_regex = r"""(?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)/)(?:[^\s()<>{}\[\]]+|\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\))+(?:\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’])|(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)\b/?(?!@)))"""
@@ -71,7 +76,6 @@ class Dataset:
         self.dataset['posts'] = self.dataset['posts'].apply(lambda x: ' '.join([word for word in x.split() if word not in (self.stop_words)]))
 
     def vectorize(self):
-        self.Tfidf = TfidfVectorizer(max_features=1000).fit(self.dataset['posts'])
         X = self.Tfidf.transform(self.dataset['posts'])
         y = self.dataset['type']
         return (X, y)
@@ -522,6 +526,26 @@ class Stacker:
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
 
 
+class LSTMNeural:
+    ## COME BACK HERE
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def build_classifiers(self):
+        print('Train shape: ', self.dataset.X_train.shape)
+        print('Test shape: ', self.dataset.X_test.shape)
+        
+        model = Sequential()
+        model.add(Embedding(input_dim=self.dataset.X_train.shape[0], output_dim=100, input_length=self.dataset.X_train.shape[1]))
+        model.add(LSTM(units=100))
+        model.add(Dense(units=1, activation='softmax'))
+
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        model.fit(self.dataset.X_train, self.dataset.y_train, batch_size=1500, epochs=500)
+
+        exit()
+
 class Plot:
     def plot_acc(self, classifier_name, accuracy):
         pass
@@ -564,6 +588,10 @@ class MBTI:
         posts = posts[0].split('|||')
         self.posts = pd.DataFrame(posts, columns=['posts'])
         
+    def read_post_string(self, data):
+        posts = data.split('|||')
+        self.posts = pd.DataFrame(posts, columns=['posts'])
+
     def preprocess_input(self):
         self.posts['posts'] = self.posts['posts'].apply(self.clean_text)
         self.lemmatization()
@@ -678,7 +706,6 @@ class MBTI:
         
         plt.show()
         return traasits
-        
 
 if __name__ == '__main__':
     dataset = Dataset()
@@ -707,16 +734,125 @@ if __name__ == '__main__':
 
     stack = Stacker(dataset)
     stack.combine_models(naive_bayes, svm, knn, logreg, randomforest)
-    stack.test_accuracy()
+    # stack.test_accuracy()
+
+    lstm = LSTMNeural(dataset)
+    lstm.build_classifiers()
 
     plot = Plot()
+    classifier = stack # default classifier in case none chosen
+    file_content = '' # default file content for file button
+    text_content = ''
 
-    mbti = MBTI(dataset, 
-                stack.IEClassifier,
-                stack.NSClassifier,
-                stack.TFClassifier,
-                stack.JPClassifier)
+    # mbti = MBTI(dataset, 
+    #             stack.IEClassifier,
+    #             stack.NSClassifier,
+    #             stack.TFClassifier,
+    #             stack.JPClassifier)
 
-    mbti.read_posts()
-    posts = mbti.preprocess_input()
-    trait = mbti.get_results(posts, 'Stacked model', 'Tudor')
+    # mbti.read_posts()
+    # posts = mbti.preprocess_input()
+    # trait = mbti.get_results(posts, 'Model', 'Tudor')
+
+    window = tk.Tk()
+    window.geometry("940x600")
+
+    def svm_classifier():
+        global classifier
+        global svm
+        print('SVM')
+        classifier=svm
+
+
+    def rf_classifier():
+        global classifier
+        global randomforest
+        print('Random forest')
+        classifier=randomforest
+
+    def logreg_classifier():
+        global classifier
+        global logreg
+        print('Logreg')
+        classifier=logreg
+
+    def nb_classifier():
+        global classifier
+        global naive_bayes
+        print('naive bayes')
+        classifier=naive_bayes
+
+    def knn_classifier():
+        global classifier
+        global knn
+        print('KNN')
+        classifier=knn
+
+    def stack_classifier():
+        global classifier
+        global stack
+        print('stacked')
+        classifier=stack
+
+    def load_file():
+        file_path = filedialog.askopenfilename()
+        with open(file_path, "r", encoding='utf8') as file:
+            file_contents = file.readlines()[0]
+
+        global file_content
+        file_content = file_contents
+
+    def compute():
+        global classifier
+        global file_content
+        global text_content
+        global dataset
+        global textbox1
+
+        text_content = textbox1.get("1.0", tk.END)
+
+        mbti = MBTI(dataset, 
+                classifier.IEClassifier,
+                classifier.NSClassifier,
+                classifier.TFClassifier,
+                classifier.JPClassifier)
+        if text_content.strip() != '':
+            # print(f'::{text_content}::')
+            # print('Text chosen')
+            mbti.read_post_string(text_content)
+        elif file_content.strip() != '':
+            # print('File chosen')
+            mbti.read_post_string(file_content)
+        else:
+            print('My guy insert text or file!!')
+
+        print('Computing your personality...')
+        # print('Text: ', text_content)
+        # print('File: ', file_content)
+        posts = mbti.preprocess_input()
+        trait = mbti.get_results(posts, 'Model', 'Tudor')
+
+    button1 = tk.Button(text="SVM", height=5, width=21, command=svm_classifier)
+    button2 = tk.Button(text="Random Forest", height=5, width=21, command=rf_classifier)
+    button3 = tk.Button(text="Logistic Regression", height=5, width=21, command=logreg_classifier)
+    button4 = tk.Button(text="Naive Bayes", height=5, width=21, command=nb_classifier)
+    button5 = tk.Button(text="KNN", height=5, width=21, command=knn_classifier)
+    button6 = tk.Button(text="Stacked", height=5, width=21, command=stack_classifier)
+    textbox1 = tk.Text(wrap=tk.WORD)
+    textbox1.insert(tk.END, "Input posts separated by '||' and find your personality...")
+    button7 = tk.Button(text="Load file", command=load_file)
+    button8 = tk.Button(text="Compute personality", command=compute)
+
+    button1.grid(row=0, column=0)
+    button2.grid(row=0, column=1)
+    button3.grid(row=0, column=2)
+    button4.grid(row=0, column=3)
+    button5.grid(row=0, column=4)
+    button6.grid(row=0, column=5)
+    textbox1.place(x=10, y=100, width=920, height=300)
+    button7.place(x=365, y=450, width=200, height=100)
+    button8.place(x=700, y=450, width=200, height=100)
+
+    textbox1.bind('<FocusIn>', lambda e: textbox1.delete("1.0", tk.END))
+
+    window.mainloop()
