@@ -7,6 +7,7 @@ import pickle
 import os
 import re
 import tkinter as tk
+import tensorflow as tf
 from tkinter import filedialog
 from nltk.classify import NaiveBayesClassifier
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
@@ -532,19 +533,78 @@ class LSTMNeural:
         self.dataset = dataset
 
     def build_classifiers(self):
-        print('Train shape: ', self.dataset.X_train.shape)
-        print('Test shape: ', self.dataset.X_test.shape)
-        
-        model = Sequential()
-        model.add(Embedding(input_dim=self.dataset.X_train.shape[0], output_dim=100, input_length=self.dataset.X_train.shape[1]))
-        model.add(LSTM(units=100))
-        model.add(Dense(units=1, activation='softmax'))
+        # print('Train shape: ', self.dataset.X_train.shape)
+        # print('Label shape: ', self.dataset.y_train.shape)
+        # print("train")
+        # print(self.dataset.X_train.toarray())
+        # print("labels")
+        # print(self.dataset.y_train)
+        if os.path.exists('LSTM_IE.pickle'):
+            self.IEClassifier = self.dataset.model.load_model('LSTM_IE')
+        else:
+            labels = [self.dataset.boolean(type, 0, 'I', 'E') for type in self.dataset.y_train]
+            
+            self.IEClassifier = Sequential()
+            self.IEClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.IEClassifier.add(LSTM(units=100))
+            self.IEClassifier.add(Dense(units=1, activation='softmax'))
+            self.IEClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.IEClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.dataset.model.save_model('LSTM_IE', self.IEClassifier)
 
-        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        if os.path.exists('LSTM_NS.pickle'):
+            self.NSClassifier = self.dataset.model.load_model('LSTM_NS')
+        else:
+            labels = [self.dataset.boolean(type, 1, 'N', 'S') for type in self.dataset.y_train]
+            
+            self.NSClassifier = Sequential()
+            self.NSClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.NSClassifier.add(LSTM(units=100))
+            self.NSClassifier.add(Dense(units=1, activation='softmax'))
+            self.NSClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.NSClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.dataset.model.save_model('LSTM_NS', self.NSClassifier)
 
-        model.fit(self.dataset.X_train, self.dataset.y_train, batch_size=1500, epochs=500)
+        if os.path.exists('LSTM_TF.pickle'):
+            self.TFClassifier = self.dataset.model.load_model('LSTM_TF')
+        else:
+            labels = [self.dataset.boolean(type, 2, 'T', 'F') for type in self.dataset.y_train]
+            
+            self.TFClassifier = Sequential()
+            self.TFClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.TFClassifier.add(LSTM(units=100))
+            self.TFClassifier.add(Dense(units=1, activation='softmax'))
+            self.TFClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.TFClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.dataset.model.save_model('LSTM_TF', self.TFClassifier)
 
-        exit()
+        if os.path.exists('LSTM_JP.pickle'):
+            self.JPClassifier = self.dataset.model.load_model('LSTM_JP')
+        else:
+            labels = [self.dataset.boolean(type, 3, 'J', 'P') for type in self.dataset.y_train]
+            
+            self.JPClassifier = Sequential()
+            self.JPClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.JPClassifier.add(LSTM(units=100))
+            self.JPClassifier.add(Dense(units=1, activation='softmax'))
+            self.JPClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.JPClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.dataset.model.save_model('LSTM_JP', self.JPClassifier)
+
+    def test_accuracy(self):
+        labels = [self.dataset.boolean(type, 0, 'I', 'E') for type in self.dataset.y_test]
+        loss, self.IEAccuracy = self.IEClassifier.evaluate(self.dataset.X_test.toarray(), np.array(labels))
+
+        labels = [self.dataset.boolean(type, 1, 'N', 'S') for type in self.dataset.y_test]
+        loss, self.NSAccuracy = self.NSClassifier.evaluate(self.dataset.X_test.toarray(), np.array(labels))
+
+        labels = [self.dataset.boolean(type, 2, 'T', 'F') for type in self.dataset.y_test]
+        loss, self.TFAccuracy = self.TFClassifier.evaluate(self.dataset.X_test.toarray(), np.array(labels))
+
+        labels = [self.dataset.boolean(type, 3, 'J', 'P') for type in self.dataset.y_test]
+        loss, self.JPAccuracy = self.JPClassifier.evaluate(self.dataset.X_test.toarray(), np.array(labels))
+
+        print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
 
 class Plot:
     def plot_acc(self, classifier_name, accuracy):
@@ -626,6 +686,8 @@ class MBTI:
         return X
 
     def predict(self, input):
+        input.sort_indices()
+        input = input.toarray()
         IE = self.IEClassifier.predict(input)[0]
         NS = self.NSClassifier.predict(input)[0]
         TF = self.TFClassifier.predict(input)[0]
@@ -738,6 +800,7 @@ if __name__ == '__main__':
 
     lstm = LSTMNeural(dataset)
     lstm.build_classifiers()
+    # lstm.test_accuracy()
 
     plot = Plot()
     classifier = stack # default classifier in case none chosen
@@ -762,7 +825,6 @@ if __name__ == '__main__':
         global svm
         print('SVM')
         classifier=svm
-
 
     def rf_classifier():
         global classifier
@@ -793,6 +855,12 @@ if __name__ == '__main__':
         global stack
         print('stacked')
         classifier=stack
+
+    def lstm_classifier():
+        global classifier
+        global lstm
+        print('lstm')
+        classifier=lstm
 
     def load_file():
         file_path = filedialog.askopenfilename()
@@ -842,6 +910,7 @@ if __name__ == '__main__':
     textbox1.insert(tk.END, "Input posts separated by '||' and find your personality...")
     button7 = tk.Button(text="Load file", command=load_file)
     button8 = tk.Button(text="Compute personality", command=compute)
+    button9 = tk.Button(text="LSTM", command=lstm_classifier)
 
     button1.grid(row=0, column=0)
     button2.grid(row=0, column=1)
@@ -852,6 +921,7 @@ if __name__ == '__main__':
     textbox1.place(x=10, y=100, width=920, height=300)
     button7.place(x=365, y=450, width=200, height=100)
     button8.place(x=700, y=450, width=200, height=100)
+    button9.place(x=10, y=450, width=200, height=100)
 
     textbox1.bind('<FocusIn>', lambda e: textbox1.delete("1.0", tk.END))
 
