@@ -42,31 +42,24 @@ class Dataset:
         self.dataset = pd.read_csv(dataset_file)
         self.model = Model()
         self.lemmatizer = WordNetLemmatizer()
-        self.Tfidf = TfidfVectorizer(max_features=1000).fit(self.dataset['posts'])
+        self.Tfidf = TfidfVectorizer(max_features=2000).fit(self.dataset['posts'])
         
         self.stop_words = set(nltk.corpus.stopwords.words('english'))
-        self.url_regex = r"""(?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)/)(?:[^\s()<>{}\[\]]+|\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\))+(?:\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’])|(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)\b/?(?!@)))"""
 
+    # Remove irrelevant elements from each instance
     def clean_text(self):
-        df_length = []
-        cleaned_text = []
-        str_punc = string.punctuation
-        for text in self.dataset.posts:
-            text = text.lower()
-            text = re.sub('http.*?([ ]|\|\|\||$)', ' ', text)
-            text = re.sub(self.url_regex, ' ', text)
-            text = re.sub('['+re.escape(str_punc)+']'," ",  text)
-            text = re.sub('(\[|\()*\d+(\]|\))*', ' ', text)
-
-            # Remove string marks
-            text = re.sub('[’‘“\.”…–]', '', text)
-            text = re.sub('[^(\w|\s)]', '', text)
-            text = re.sub('(gt|lt)', '', text)
+        cleaned_posts = []
+        for post in self.dataset.posts:
+            post = post.lower()
+            post = re.sub('http.*?([ ]|\|\|\||$)', ' ', post) # clean links
+            post = re.sub('['+re.escape(string.punctuation)+']', ' ',  post) # clean punctuation
+            post = re.sub('(\[|\()*\d+(\]|\))*', ' ', post) # clean numbers
+            post = re.sub(r'\s+', ' ', post) # unique white characters
             
-            df_length.append(len(text.split()))
-            cleaned_text.append(text)
-        self.dataset.posts = cleaned_text
+            cleaned_posts.append(post)
+        self.dataset.posts = cleaned_posts
 
+    # Replace each word from the post with its lemmatized version
     def lemmatization(self):
         for i in range(len(self.dataset['posts'])):
             self.dataset['posts'][i] = nltk.word_tokenize(self.dataset['posts'][i])
@@ -76,14 +69,14 @@ class Dataset:
     def remove_stopwords(self):
         self.dataset['posts'] = self.dataset['posts'].apply(lambda x: ' '.join([word for word in x.split() if word not in (self.stop_words)]))
 
+    # Extract features using TFIDF from input posts
     def vectorize(self):
         X = self.Tfidf.transform(self.dataset['posts'])
         y = self.dataset['type']
         return (X, y)
 
+    # Save/load cleaned input and split train/test
     def preprocess_dataset(self):
-        # self.types = np.unique(np.array(self.dataset['type']))
-        # self.posts_no_by_type = self.dataset.groupby(['type']).count() * 50
         if os.path.exists('MBTI-instances.pickle') and os.path.exists('MBTI-labels.pickle'):
             X = self.model.load_data('MBTI-instances.pickle')
             y = self.model.load_data('MBTI-labels.pickle')
@@ -98,6 +91,7 @@ class Dataset:
 
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, random_state=42, test_size=0.2)
 
+    # Transform each label into boolean based on the classifier used(I-E, N-S, T-F, J-P)
     def boolean(self, type, pos, first, second):
         if type[pos] == first:
             return 1
@@ -108,6 +102,7 @@ class NaiveBayes:
     def __init__(self, dataset):
         self.dataset = dataset
 
+    # Load/build each of the 4 classifiers for naive-bayes
     def build_classifiers(self):
         if os.path.exists('NaiveBayes_IE.pickle'):
             self.IEClassifier = self.dataset.model.load_model('NaiveBayes_IE')
@@ -133,6 +128,7 @@ class NaiveBayes:
             (self.JPClassifier, accuracy) = self.grid_search(3, 'J', 'P')
             self.dataset.model.save_model('NaiveBayes_JP', self.JPClassifier)
 
+    # Optimize hyperparameters using Grid Search (5 folds) and Cross Validation
     def grid_search(self, classifier_no, first_label, second_label):
         pipeline = Pipeline([('nb', BernoulliNB())])
 
@@ -140,20 +136,18 @@ class NaiveBayes:
             'nb__alpha': [0.1, 1.0, 10]
         }
 
-        # Create a GridSearchCV object with 5-fold cross-validation (i do not have to split data into train/test)
         grid_search = GridSearchCV(pipeline, param_grid, cv=5, n_jobs=-1, scoring="accuracy", verbose=10)
 
-        # Fit the grid search object to the training data
         labels = [self.dataset.boolean(type, classifier_no, first_label, second_label) for type in self.dataset.y_train]
         grid_search.fit(self.dataset.X_train, labels)
 
-        # Print the best parameters and the best score
         print('Stats:')
         print(grid_search.best_params_)
         print(grid_search.best_score_)
 
         return (grid_search.best_estimator_, grid_search.best_score_*100)
 
+    # Test the accuracy of each resulted model
     def test_accuracy(self):
         labels = [self.dataset.boolean(type, 0, 'I', 'E') for type in self.dataset.y_test]
         self.IEAccuracy = self.IEClassifier.score(self.dataset.X_test, labels)
@@ -209,14 +203,11 @@ class SVM:
             'svm__max_iter': [10000, 100000]
         }
 
-        # Create a GridSearchCV object with 5-fold cross-validation (i do not have to split data into train/test)
         grid_search = GridSearchCV(pipeline, param_grid, cv=5, n_jobs=-1, scoring="accuracy", verbose=10)
 
-        # Fit the grid search object to the training data
         labels = [self.dataset.boolean(type, classifier_no, first_label, second_label) for type in self.dataset.y_train]
         grid_search.fit(self.dataset.X_train, labels)
 
-        # Print the best parameters and the best score
         print('Stats:')
         print(grid_search.best_params_)
         print(grid_search.best_score_)
@@ -275,14 +266,11 @@ class KNN:
             'knn__n_neighbors': [3, 5, 7, 9, 11, 13, 15]
         }
 
-        # Create a GridSearchCV object with 5-fold cross-validation (i do not have to split data into train/test)
         grid_search = GridSearchCV(pipeline, param_grid, cv=5, n_jobs=-1, scoring="accuracy", verbose=10)
 
-        # Fit the grid search object to the training data
         labels = [self.dataset.boolean(type, classifier_no, first_label, second_label) for type in self.dataset.y_train]
         grid_search.fit(self.dataset.X_train, labels)
 
-        # Print the best parameters and the best score
         print('Stats:')
         print(grid_search.best_params_)
         print(grid_search.best_score_)
@@ -342,14 +330,11 @@ class LogReg:
             'logreg__penalty': ['l1', 'l2']
         }
 
-        # Create a GridSearchCV object with 5-fold cross-validation (i do not have to split data into train/test)
         grid_search = GridSearchCV(pipeline, param_grid, cv=5, n_jobs=-1, scoring="accuracy", verbose=10)
 
-        # Fit the grid search object to the training data
         labels = [self.dataset.boolean(type, classifier_no, first_label, second_label) for type in self.dataset.y_train]
         grid_search.fit(self.dataset.X_train, labels)
 
-        # Print the best parameters and the best score
         print('Stats:')
         print(grid_search.best_params_)
         print(grid_search.best_score_)
@@ -411,14 +396,11 @@ class RandomForest:
             'randomforest__min_samples_leaf': [1, 2, 4]
         }
 
-        # Create a GridSearchCV object with 5-fold cross-validation (i do not have to split data into train/test)
         grid_search = GridSearchCV(pipeline, param_grid, cv=5, n_jobs=-1, scoring="accuracy", verbose=10)
 
-        # Fit the grid search object to the training data
         labels = [self.dataset.boolean(type, classifier_no, first_label, second_label) for type in self.dataset.y_train]
         grid_search.fit(self.dataset.X_train, labels)
 
-        # Print the best parameters and the best score
         print('Stats:')
         print(grid_search.best_params_)
         print(grid_search.best_score_)
@@ -528,28 +510,21 @@ class Stacker:
 
 
 class LSTMNeural:
-    ## COME BACK HERE
     def __init__(self, dataset):
         self.dataset = dataset
 
     def build_classifiers(self):
-        # print('Train shape: ', self.dataset.X_train.shape)
-        # print('Label shape: ', self.dataset.y_train.shape)
-        # print("train")
-        # print(self.dataset.X_train.toarray())
-        # print("labels")
-        # print(self.dataset.y_train)
         if os.path.exists('LSTM_IE.pickle'):
             self.IEClassifier = self.dataset.model.load_model('LSTM_IE')
         else:
             labels = [self.dataset.boolean(type, 0, 'I', 'E') for type in self.dataset.y_train]
             
             self.IEClassifier = Sequential()
-            self.IEClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.IEClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
             self.IEClassifier.add(LSTM(units=100))
             self.IEClassifier.add(Dense(units=1, activation='softmax'))
             self.IEClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.IEClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.IEClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_IE', self.IEClassifier)
 
         if os.path.exists('LSTM_NS.pickle'):
@@ -558,11 +533,11 @@ class LSTMNeural:
             labels = [self.dataset.boolean(type, 1, 'N', 'S') for type in self.dataset.y_train]
             
             self.NSClassifier = Sequential()
-            self.NSClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.NSClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
             self.NSClassifier.add(LSTM(units=100))
             self.NSClassifier.add(Dense(units=1, activation='softmax'))
             self.NSClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.NSClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.NSClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_NS', self.NSClassifier)
 
         if os.path.exists('LSTM_TF.pickle'):
@@ -571,11 +546,11 @@ class LSTMNeural:
             labels = [self.dataset.boolean(type, 2, 'T', 'F') for type in self.dataset.y_train]
             
             self.TFClassifier = Sequential()
-            self.TFClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.TFClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
             self.TFClassifier.add(LSTM(units=100))
             self.TFClassifier.add(Dense(units=1, activation='softmax'))
             self.TFClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.TFClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.TFClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_TF', self.TFClassifier)
 
         if os.path.exists('LSTM_JP.pickle'):
@@ -584,11 +559,11 @@ class LSTMNeural:
             labels = [self.dataset.boolean(type, 3, 'J', 'P') for type in self.dataset.y_train]
             
             self.JPClassifier = Sequential()
-            self.JPClassifier.add(Embedding(input_dim=1000, output_dim=50, input_length=1000))
+            self.JPClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
             self.JPClassifier.add(LSTM(units=100))
             self.JPClassifier.add(Dense(units=1, activation='softmax'))
             self.JPClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.JPClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=10)
+            self.JPClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_JP', self.JPClassifier)
 
     def test_accuracy(self):
@@ -605,10 +580,6 @@ class LSTMNeural:
         loss, self.JPAccuracy = self.JPClassifier.evaluate(self.dataset.X_test.toarray(), np.array(labels))
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
-
-class Plot:
-    def plot_acc(self, classifier_name, accuracy):
-        pass
 
 class Model:
     # Model name example: NaiveBayes_IE (model_category)
@@ -657,7 +628,7 @@ class MBTI:
         self.lemmatization()
         self.remove_stopwords()
         X=self.vectorize()
-        return X ## TODO: take X and make predictions in order to get accuracy
+        return X
 
     def clean_text(self, text):
         text = text.lower()
@@ -712,36 +683,33 @@ class MBTI:
             result+='P'
         return result
 
-    def get_results(self, posts, model_name, user_name, traasits=[]):
+    def get_results(self, posts, model_name, user_name):
         a = []
         trait1 = pd.DataFrame([0,0,0,0],['I','N','T','J'],['count'])
         trait2 = pd.DataFrame([0,0,0,0],['E','S','F','P'],['count'])
         for post in posts:
             a += [self.predict(post)]
-        for i in a:
+        for pred in a:
             for j in ['I','N','T','J']:
-                if j in i:
+                if j in pred:
                     trait1.loc[j] += 1                
             for j in ['E','S','F','P']:
-                if j in i:
+                if j in pred:
                     trait2.loc[j] += 1 
         trait1 = trait1.T
         trait1 = trait1*100/posts.shape[0]
         trait2 = trait2.T
         trait2 = trait2*100/posts.shape[0]
         
-        
         #Finding the personality
-        YourTrait = ''
-        for i,j in zip(trait1,trait2):
-            temp = max(trait1[i][0],trait2[j][0])
+        personality = ''
+        for i, j in zip(trait1, trait2):
+            temp = max(trait1[i][0], trait2[j][0])
             if(trait1[i][0]==temp):
-                YourTrait += i  
+                personality += i  
             if(trait2[j][0]==temp):
-                YourTrait += j
-        traasits +=[YourTrait] 
+                personality += j
         
-        #Plotting
         labels = np.array(['I-E','N-S','T-F','J-P'])
 
         intj = trait1.loc['count']
@@ -756,53 +724,59 @@ class MBTI:
 
         fig.set_size_inches(10, 7)
 
-        ax.set_xlabel('Finding the MBTI Trait', size = 18)
-        ax.set_ylabel('Trait Percent (%)', size = 18)
+        ax.set_xlabel('Find MBTI traits', size = 18)
+        ax.set_ylabel('Trait percent (%)', size = 18)
         ax.set_xticks(ind + width / 2)
         ax.set_xticklabels(labels)
-        ax.set_yticks(np.arange(0,105, step= 10))
-        ax.set_title('Your Personality is '+YourTrait,size = 20)
+        ax.set_yticks(np.arange(0, 105, step= 10))
+        ax.set_title('Your personality is ' + personality, size = 20)
         plt.grid(True)
         
         fig.savefig(f'{model_name}-{user_name}.png', dpi=200)
         
         plt.show()
-        return traasits
 
 if __name__ == '__main__':
     dataset = Dataset()
     dataset.read_dataset()
     dataset.preprocess_dataset()
+    # input('Press enter to continue...')
 
     naive_bayes = NaiveBayes(dataset)
     naive_bayes.build_classifiers()
     # naive_bayes.test_accuracy()
+    # input('Press enter to continue...')
 
     svm = SVM(dataset)
     svm.build_classifiers()
     # svm.test_accuracy()
+    # input('Press enter to continue...')
 
     knn = KNN(dataset)
     knn.build_classifiers()
     # knn.test_accuracy()
+    # input('Press enter to continue...')
 
     logreg = LogReg(dataset)
     logreg.build_classifiers()
     # logreg.test_accuracy()
+    # input('Press enter to continue...')
 
     randomforest = RandomForest(dataset)
     randomforest.build_classifiers()
     # randomforest.test_accuracy()
+    # input('Press enter to continue...')
 
     stack = Stacker(dataset)
     stack.combine_models(naive_bayes, svm, knn, logreg, randomforest)
     # stack.test_accuracy()
+    # input('Press enter to continue...')
 
     lstm = LSTMNeural(dataset)
     lstm.build_classifiers()
     # lstm.test_accuracy()
+    # input('Press enter to continue...')
 
-    plot = Plot()
     classifier = stack # default classifier in case none chosen
     file_content = '' # default file content for file button
     text_content = ''
@@ -898,7 +872,7 @@ if __name__ == '__main__':
         # print('Text: ', text_content)
         # print('File: ', file_content)
         posts = mbti.preprocess_input()
-        trait = mbti.get_results(posts, 'Model', 'Tudor')
+        mbti.get_results(posts, 'Model', 'Tudor')
 
     button1 = tk.Button(text="SVM", height=5, width=21, command=svm_classifier)
     button2 = tk.Button(text="Random Forest", height=5, width=21, command=rf_classifier)
