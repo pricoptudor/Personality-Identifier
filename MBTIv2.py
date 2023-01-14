@@ -519,12 +519,13 @@ class LSTMNeural:
         else:
             labels = [self.dataset.boolean(type, 0, 'I', 'E') for type in self.dataset.y_train]
             
+            shape_0 = self.dataset.X_train.shape[0]
+            shape_1 = self.dataset.X_train.shape[1]
             self.IEClassifier = Sequential()
-            self.IEClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
-            self.IEClassifier.add(LSTM(units=100))
+            self.IEClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.IEClassifier.add(Dense(units=1, activation='softmax'))
             self.IEClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.IEClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
+            self.IEClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_IE', self.IEClassifier)
 
         if os.path.exists('LSTM_NS.pickle'):
@@ -532,12 +533,13 @@ class LSTMNeural:
         else:
             labels = [self.dataset.boolean(type, 1, 'N', 'S') for type in self.dataset.y_train]
             
+            shape_0 = self.dataset.X_train.shape[0]
+            shape_1 = self.dataset.X_train.shape[1]
             self.NSClassifier = Sequential()
-            self.NSClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
-            self.NSClassifier.add(LSTM(units=100))
+            self.NSClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.NSClassifier.add(Dense(units=1, activation='softmax'))
             self.NSClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.NSClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
+            self.NSClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_NS', self.NSClassifier)
 
         if os.path.exists('LSTM_TF.pickle'):
@@ -545,12 +547,13 @@ class LSTMNeural:
         else:
             labels = [self.dataset.boolean(type, 2, 'T', 'F') for type in self.dataset.y_train]
             
+            shape_0 = self.dataset.X_train.shape[0]
+            shape_1 = self.dataset.X_train.shape[1]
             self.TFClassifier = Sequential()
-            self.TFClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
-            self.TFClassifier.add(LSTM(units=100))
+            self.TFClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.TFClassifier.add(Dense(units=1, activation='softmax'))
             self.TFClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.TFClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
+            self.TFClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_TF', self.TFClassifier)
 
         if os.path.exists('LSTM_JP.pickle'):
@@ -558,12 +561,13 @@ class LSTMNeural:
         else:
             labels = [self.dataset.boolean(type, 3, 'J', 'P') for type in self.dataset.y_train]
             
+            shape_0 = self.dataset.X_train.shape[0]
+            shape_1 = self.dataset.X_train.shape[1]
             self.JPClassifier = Sequential()
-            self.JPClassifier.add(Embedding(input_dim=2000, output_dim=50, input_length=2000))
-            self.JPClassifier.add(LSTM(units=100))
+            self.JPClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.JPClassifier.add(Dense(units=1, activation='softmax'))
             self.JPClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-            self.JPClassifier.fit(self.dataset.X_train.toarray(), np.array(labels), batch_size=1000, epochs=5)
+            self.JPClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_JP', self.JPClassifier)
 
     def test_accuracy(self):
@@ -630,18 +634,15 @@ class MBTI:
         X=self.vectorize()
         return X
 
-    def clean_text(self, text):
-        text = text.lower()
-    
-        text = re.sub("@[A-Za-z0-9_]+","", text)
-        text = re.sub("#[A-Za-z0-9_]+","", text)
-        text = re.sub(r"http\S+", "", text)
-        text = re.sub(r"www.\S+", "", text)
-        text = re.sub('[()!?]', ' ', text)
-        text = re.sub('\[.*?\]',' ', text)
-        text = re.sub("[^a-z0-9]"," ", text)
+    def clean_text(self, post):
+        post = post.lower()
+
+        post = re.sub('http.*?([ ]|\|\|\||$)', ' ', post) # clean links
+        post = re.sub('['+re.escape(string.punctuation)+']', ' ',  post) # clean punctuation
+        post = re.sub('(\[|\()*\d+(\]|\))*', ' ', post) # clean numbers
+        post = re.sub(r'\s+', ' ', post) # unique white characters
         
-        return text
+        return post
 
     def lemmatization(self):
         for i in range(len(self.posts['posts'])):
