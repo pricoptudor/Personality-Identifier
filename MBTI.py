@@ -27,6 +27,9 @@ from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.preprocessing import StandardScaler
 from keras.models import Sequential
 from keras.layers import Embedding, LSTM, Dense
+from keras.optimizers import Adam
+from wordcloud import WordCloud
+from PIL import Image
 
 ### One classifier with 16 classes => 43.93% accuracy train and 10.42% accuracy test
 ### => 4 classifiers: I-E || N-S || T-F || J-P
@@ -69,6 +72,17 @@ class Dataset:
     def remove_stopwords(self):
         self.dataset['posts'] = self.dataset['posts'].apply(lambda x: ' '.join([word for word in x.split() if word not in (self.stop_words)]))
 
+    def words_cloud(self):
+        text = " ".join(post for post in self.dataset.posts.astype(str))
+
+        wordcloud = WordCloud(width = 2000, height = 2000, random_state=1, background_color='black', colormap='Set2', collocations=False, mask=np.array(Image.open('twitter-mask.jpg'))).generate(text)
+
+        plt.figure(figsize=(10,10))
+        plt.imshow(wordcloud)
+        plt.axis("off")
+        plt.savefig('Data WordCloud', bbox_inches='tight')
+        plt.show()
+
     # Extract features using TFIDF from input posts
     def vectorize(self):
         X = self.Tfidf.transform(self.dataset['posts'])
@@ -89,6 +103,7 @@ class Dataset:
             self.model.save_data('MBTI-instances.pickle', X)
             self.model.save_data('MBTI-labels.pickle', y)
 
+        # self.words_cloud()
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, random_state=42, test_size=0.2)
 
     # Transform each label into boolean based on the classifier used(I-E, N-S, T-F, J-P)
@@ -162,6 +177,7 @@ class NaiveBayes:
         self.JPAccuracy = self.JPClassifier.score(self.dataset.X_test, labels)
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
+        return (self.IEAccuracy, self.NSAccuracy, self.TFAccuracy, self.JPAccuracy)
 
 
 class SVM:
@@ -228,6 +244,7 @@ class SVM:
         self.JPAccuracy = self.JPClassifier.score(self.dataset.X_test, labels)
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
+        return (self.IEAccuracy, self.NSAccuracy, self.TFAccuracy, self.JPAccuracy)
 
 
 class KNN:
@@ -291,6 +308,7 @@ class KNN:
         self.JPAccuracy = self.JPClassifier.score(self.dataset.X_test, labels)
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
+        return (self.IEAccuracy, self.NSAccuracy, self.TFAccuracy, self.JPAccuracy)
 
 
 class LogReg:
@@ -355,6 +373,7 @@ class LogReg:
         self.JPAccuracy = self.JPClassifier.score(self.dataset.X_test, labels)
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
+        return (self.IEAccuracy, self.NSAccuracy, self.TFAccuracy, self.JPAccuracy)
 
 
 class RandomForest:
@@ -421,6 +440,7 @@ class RandomForest:
         self.JPAccuracy = self.JPClassifier.score(self.dataset.X_test, labels)
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
+        return (self.IEAccuracy, self.NSAccuracy, self.TFAccuracy, self.JPAccuracy)
 
 
 class Stacker:
@@ -507,6 +527,7 @@ class Stacker:
         self.JPAccuracy = self.JPClassifier.score(self.dataset.X_test, labels)
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
+        return (self.IEAccuracy, self.NSAccuracy, self.TFAccuracy, self.JPAccuracy)
 
 
 class LSTMNeural:
@@ -524,7 +545,7 @@ class LSTMNeural:
             self.IEClassifier = Sequential()
             self.IEClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.IEClassifier.add(Dense(units=1, activation='softmax'))
-            self.IEClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.IEClassifier.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
             self.IEClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_IE', self.IEClassifier)
 
@@ -538,7 +559,7 @@ class LSTMNeural:
             self.NSClassifier = Sequential()
             self.NSClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.NSClassifier.add(Dense(units=1, activation='softmax'))
-            self.NSClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.NSClassifier.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
             self.NSClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_NS', self.NSClassifier)
 
@@ -552,7 +573,7 @@ class LSTMNeural:
             self.TFClassifier = Sequential()
             self.TFClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.TFClassifier.add(Dense(units=1, activation='softmax'))
-            self.TFClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.TFClassifier.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
             self.TFClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_TF', self.TFClassifier)
 
@@ -566,7 +587,7 @@ class LSTMNeural:
             self.JPClassifier = Sequential()
             self.JPClassifier.add(LSTM(units=100, input_shape=(shape_1, 1)))
             self.JPClassifier.add(Dense(units=1, activation='softmax'))
-            self.JPClassifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+            self.JPClassifier.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
             self.JPClassifier.fit(self.dataset.X_train.toarray().reshape(shape_0, shape_1, 1), np.array(labels), batch_size=1000, epochs=5)
             self.dataset.model.save_model('LSTM_JP', self.JPClassifier)
 
@@ -584,6 +605,7 @@ class LSTMNeural:
         loss, self.JPAccuracy = self.JPClassifier.evaluate(self.dataset.X_test.toarray(), np.array(labels))
 
         print(f'Accuracy per model: {self.IEAccuracy}, {self.NSAccuracy}, {self.TFAccuracy}, {self.JPAccuracy}')
+        return (self.IEAccuracy, self.NSAccuracy, self.TFAccuracy, self.JPAccuracy)
 
 class Model:
     # Model name example: NaiveBayes_IE (model_category)
@@ -631,8 +653,20 @@ class MBTI:
         self.posts['posts'] = self.posts['posts'].apply(self.clean_text)
         self.lemmatization()
         self.remove_stopwords()
+        self.words_cloud()
         X=self.vectorize()
         return X
+
+    def words_cloud(self):
+        text = " ".join(post for post in self.posts['posts'].astype(str))
+
+        wordcloud = WordCloud(width = 2000, height = 2000, random_state=1, background_color='black', colormap='Set2', collocations=False).generate(text)
+
+        plt.subplots(1, 1, figsize=(10, 10))
+        plt.imshow(wordcloud)
+        plt.axis("off")
+        plt.savefig('User WordCloud', bbox_inches='tight')
+        plt.show()
 
     def clean_text(self, post):
         post = post.lower()
@@ -737,46 +771,78 @@ class MBTI:
         
         plt.show()
 
+class Plot:
+    def __init__(self):
+        self.Accuracy = []
+        self.x_labels = ['I-E', 'N-S', 'T-F', 'J-P']
+
+    def accuracy_plot(self):
+        fig, ax = plt.subplots()
+
+        ax.plot(self.x_labels, self.Accuracy[0], linestyle='solid', marker='x', markersize=10, label='Naive Bayes')
+        ax.plot(self.x_labels, self.Accuracy[1], linestyle='solid', marker='x', markersize=10, label='SVM')
+        ax.plot(self.x_labels, self.Accuracy[2], linestyle='solid', marker='x', markersize=10, label='KNN')
+        ax.plot(self.x_labels, self.Accuracy[3], linestyle='solid', marker='x', markersize=10, label='Logistic Regression')
+        ax.plot(self.x_labels, self.Accuracy[4], linestyle='solid', marker='x', markersize=10, label='Random Forest')
+        ax.plot(self.x_labels, self.Accuracy[5], linestyle='solid', marker='x', markersize=10, label='Stacked')
+        ax.plot(self.x_labels, self.Accuracy[6], linestyle='solid', marker='x', markersize=10, label='LSTM')
+
+        ax.legend(loc='lower left')
+        ax.set_xlabel('MBTI Personality Types')
+        ax.set_ylabel('Model Accuracy %')
+
+        ax.set_title('Results Comparison')
+        ax.grid(True)
+        ax.set_xlim(-1, len(self.x_labels))
+        ax.set_ylim(0, 1)
+        plt.savefig('MBTI-models_comparison.png')
+        plt.show()
+
+
 if __name__ == '__main__':
     dataset = Dataset()
     dataset.read_dataset()
     dataset.preprocess_dataset()
     # input('Press enter to continue...')
 
+    # plot = Plot()
+
     naive_bayes = NaiveBayes(dataset)
     naive_bayes.build_classifiers()
-    # naive_bayes.test_accuracy()
+    # plot.Accuracy += [naive_bayes.test_accuracy()]
     # input('Press enter to continue...')
 
     svm = SVM(dataset)
     svm.build_classifiers()
-    # svm.test_accuracy()
+    # plot.Accuracy += [svm.test_accuracy()]
     # input('Press enter to continue...')
 
     knn = KNN(dataset)
     knn.build_classifiers()
-    # knn.test_accuracy()
+    # plot.Accuracy += [knn.test_accuracy()]
     # input('Press enter to continue...')
 
     logreg = LogReg(dataset)
     logreg.build_classifiers()
-    # logreg.test_accuracy()
+    # plot.Accuracy += [logreg.test_accuracy()]
     # input('Press enter to continue...')
 
     randomforest = RandomForest(dataset)
     randomforest.build_classifiers()
-    # randomforest.test_accuracy()
+    # plot.Accuracy += [randomforest.test_accuracy()]
     # input('Press enter to continue...')
 
     stack = Stacker(dataset)
     stack.combine_models(naive_bayes, svm, knn, logreg, randomforest)
-    # stack.test_accuracy()
+    # plot.Accuracy += [stack.test_accuracy()]
     # input('Press enter to continue...')
 
     lstm = LSTMNeural(dataset)
     lstm.build_classifiers()
-    # lstm.test_accuracy()
+    # plot.Accuracy += [lstm.test_accuracy()]
     # input('Press enter to continue...')
+
+    # plot.accuracy_plot()
 
     classifier = stack # default classifier in case none chosen
     file_content = '' # default file content for file button
