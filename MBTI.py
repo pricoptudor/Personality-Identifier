@@ -7,27 +7,19 @@ import pickle
 import os
 import re
 import tkinter as tk
-import tensorflow as tf
 from tkinter import filedialog
-from nltk.classify import NaiveBayesClassifier
-from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
+from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from nltk.classify import SklearnClassifier
-from sklearn.naive_bayes import MultinomialNB, BernoulliNB
-from sklearn.preprocessing import LabelEncoder
-from sklearn.svm import SVC, LinearSVC # LinearSVC is approximate SVC but more efficient with large dataset
-from sklearn.neighbors import KNeighborsClassifier, BallTree
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.feature_selection import SelectKBest, chi2
 from nltk.stem import WordNetLemmatizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
-from sklearn.preprocessing import StandardScaler
 from keras.models import Sequential
-from keras.layers import Embedding, LSTM, Dense
-from keras.optimizers import Adam
+from keras.layers import LSTM, Dense
 from wordcloud import WordCloud
 from PIL import Image
 
